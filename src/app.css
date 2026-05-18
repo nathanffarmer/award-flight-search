@@ -1,0 +1,79 @@
+:root {
+	--color-bg: #f8fafc;
+	--color-surface: #ffffff;
+	--color-text: #0f172a;
+	--color-muted: #64748b;
+	--color-border: #e2e8f0;
+	--color-accent: #2563eb;
+
+	--color-cabin-economy: #64748b;
+	--color-cabin-premium: #14b8a6;
+	--color-cabin-business: #6366f1;
+	--color-cabin-first: #f59e0b;
+
+	--font-sans:
+		ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+		sans-serif;
+	--font-mono:
+		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+	--space-1: 4px;
+	--space-2: 8px;
+	--space-3: 12px;
+	--space-4: 16px;
+	--space-5: 24px;
+	--space-6: 48px;
+
+	--radius-sm: 4px;
+	--radius-md: 8px;
+	--radius-lg: 12px;
+
+	--shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06), 0 1px 3px rgb(15 23 42 / 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--color-bg: #0b1220;
+		--color-surface: #111a2e;
+		--color-text: #e2e8f0;
+		--color-muted: #94a3b8;
+		--color-border: #1f2a44;
+		--color-accent: #60a5fa;
+		--shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5), 0 1px 3px rgb(0 0 0 / 0.35);
+	}
+}
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html,
+body {
+	margin: 0;
+	padding: 0;
+}
+
+body {
+	font-family: var(--font-sans);
+	font-size: 15px;
+	line-height: 1.5;
+	color: var(--color-text);
+	background: var(--color-bg);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+	margin: 0;
+	font-weight: 600;
+	line-height: 1.25;
+}
+
+a {
+	color: var(--color-accent);
+}
