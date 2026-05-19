@@ -1,6 +1,11 @@
 <script lang="ts">
-	import type { WatchedTrip, AwardAvailability, Cabin } from '$lib/types';
-	import { CABIN_LABELS } from '$lib/types';
+	import {
+		CABIN_LABELS,
+		type WatchedTrip,
+		type AwardAvailability,
+		type CabinAvailability,
+		type Cabin
+	} from '$lib/types';
 	import { formatMiles, formatDate } from '$lib/format';
 	import CabinBadge from './CabinBadge.svelte';
 	import { ArrowRight, Trash2, Loader2 } from '@lucide/svelte';
@@ -17,12 +22,11 @@
 		onDelete: (id: string) => void;
 	} = $props();
 
-	// Best price per cabin across all returned rows.
 	const best = $derived.by(() => {
 		const out: Partial<Record<Cabin, { miles: number; date: string; program: string }>> = {};
 		if (!results) return out;
 		for (const r of results) {
-			for (const [cabin, info] of Object.entries(r.cabins) as [Cabin, { mileageCost: number }][]) {
+			for (const [cabin, info] of Object.entries(r.cabins) as [Cabin, CabinAvailability][]) {
 				const current = out[cabin];
 				if (!current || info.mileageCost < current.miles) {
 					out[cabin] = { miles: info.mileageCost, date: r.date, program: r.program };

@@ -1,5 +1,10 @@
 <script lang="ts">
-	import type { AwardAvailability, Cabin } from '$lib/types';
+	import {
+		CABIN_ORDER,
+		type AwardAvailability,
+		type CabinAvailability,
+		type Cabin
+	} from '$lib/types';
 	import { formatMiles, formatUSD, formatDate } from '$lib/format';
 	import CabinBadge from './CabinBadge.svelte';
 	import ProgramBadge from './ProgramBadge.svelte';
@@ -8,8 +13,8 @@
 	let { result }: { result: AwardAvailability } = $props();
 
 	const cabinEntries = $derived(
-		(Object.entries(result.cabins) as [Cabin, NonNullable<AwardAvailability['cabins'][Cabin]>][])
-			.sort(([a], [b]) => 'YWJF'.indexOf(a) - 'YWJF'.indexOf(b))
+		(Object.entries(result.cabins) as [Cabin, CabinAvailability][])
+			.sort(([a], [b]) => CABIN_ORDER.indexOf(a) - CABIN_ORDER.indexOf(b))
 	);
 </script>
 

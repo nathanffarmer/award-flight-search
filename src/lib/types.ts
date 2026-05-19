@@ -1,7 +1,8 @@
-// Domain types. The `AwardAvailability` shape mirrors seats.aero's /search
-// response so the mock fixtures and a real API call return the same thing.
+// Types mirror seats.aero's /search response so mock and live paths share a shape.
 
 export type Cabin = 'Y' | 'W' | 'J' | 'F';
+
+export const CABIN_ORDER: Cabin[] = ['Y', 'W', 'J', 'F'];
 
 export const CABIN_LABELS: Record<Cabin, string> = {
 	Y: 'Economy',
@@ -39,16 +40,14 @@ export interface WatchedTrip {
 	id: string;
 	origin: string;
 	destination: string;
-	departDate: string; // YYYY-MM-DD
-	flexDays: number; // ±N days around departDate
+	departDate: string;
+	flexDays: number;
 	cabins: Cabin[];
 	programs: Program[];
 	maxMiles?: number;
 	createdAt: number;
 }
 
-// One availability record from seats.aero — one (route, date, program) row
-// with per-cabin booleans, costs, direct flags, and remaining seats.
 export interface AwardAvailability {
 	id: string;
 	origin: string;
@@ -67,7 +66,7 @@ export interface CabinAvailability {
 	mileageCost: number;
 	direct: boolean;
 	remainingSeats: number;
-	airlines: string[]; // e.g. ["AC", "LH"]
+	airlines: string[];
 }
 
 export interface SearchRequest {
@@ -84,4 +83,16 @@ export interface SearchResponse {
 	results: AwardAvailability[];
 	source: 'live' | 'mock';
 	queriedAt: number;
+}
+
+export function tripToSearchRequest(trip: WatchedTrip): SearchRequest {
+	return {
+		origin: trip.origin,
+		destination: trip.destination,
+		departDate: trip.departDate,
+		flexDays: trip.flexDays,
+		cabins: trip.cabins,
+		programs: trip.programs,
+		maxMiles: trip.maxMiles
+	};
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { createQuery } from '@tanstack/svelte-query';
-	import type { WatchedTrip, SearchResponse } from '$lib/types';
+	import { tripToSearchRequest, type WatchedTrip, type SearchResponse } from '$lib/types';
 	import { postSearch } from '$lib/search-client';
 	import WatchlistCard from './WatchlistCard.svelte';
 
@@ -13,27 +13,8 @@
 	// Parent keys cards by trip.id, so trip is stable for this card's life.
 	const query = untrack(() =>
 		createQuery<SearchResponse>({
-			queryKey: [
-				'search',
-				trip.id,
-				trip.origin,
-				trip.destination,
-				trip.departDate,
-				trip.flexDays,
-				trip.cabins,
-				trip.programs,
-				trip.maxMiles
-			],
-			queryFn: () =>
-				postSearch({
-					origin: trip.origin,
-					destination: trip.destination,
-					departDate: trip.departDate,
-					flexDays: trip.flexDays,
-					cabins: trip.cabins,
-					programs: trip.programs,
-					maxMiles: trip.maxMiles
-				}),
+			queryKey: ['search', trip.id],
+			queryFn: () => postSearch(tripToSearchRequest(trip)),
 			staleTime: 60_000
 		})
 	);
