@@ -41,11 +41,13 @@ export interface WatchedTrip {
 	origin: string;
 	destination: string;
 	departDate: string;
+	returnDate?: string;
 	flexDays: number;
 	cabins: Cabin[];
 	programs: Program[];
 	maxMiles?: number;
 	createdAt: number;
+	updatedAt: number;
 }
 
 export interface AwardAvailability {
@@ -94,5 +96,16 @@ export function tripToSearchRequest(trip: WatchedTrip): SearchRequest {
 		cabins: trip.cabins,
 		programs: trip.programs,
 		maxMiles: trip.maxMiles
+	};
+}
+
+// Swaps origin/destination and uses returnDate as departDate. Caller must
+// ensure trip.returnDate is set (queries that use this gate on enabled).
+export function tripToReturnSearchRequest(trip: WatchedTrip): SearchRequest {
+	return {
+		...tripToSearchRequest(trip),
+		origin: trip.destination,
+		destination: trip.origin,
+		departDate: trip.returnDate!
 	};
 }

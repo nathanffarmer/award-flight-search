@@ -7,16 +7,19 @@
 	import AwardOptionRow from '$lib/components/AwardOptionRow.svelte';
 	import CabinBadge from '$lib/components/CabinBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
+	import TripNotFound from '$lib/components/TripNotFound.svelte';
 	import { formatDateLong } from '$lib/format';
 	import {
 		CABIN_LABELS,
 		tripToSearchRequest,
+		tripToReturnSearchRequest,
 		type AwardAvailability,
 		type CabinAvailability,
 		type Cabin,
 		type SearchResponse
 	} from '$lib/types';
-	import { ArrowLeft, ArrowRight, Loader2 } from '@lucide/svelte';
+	import type { QueryObserverResult } from '@tanstack/svelte-query';
+	import { ArrowLeft, ArrowRight, Loader2, Pencil } from '@lucide/svelte';
 
 	const tripId = $derived(page.params.id ?? '');
 	const trip = $derived(watchlist.get(tripId));
@@ -24,10 +27,9 @@
 	let cabinFilter = $state<Cabin | 'all'>('all');
 	let sortKey = $state<'miles' | 'date'>('miles');
 
-	// queryKey captured at mount; the page remounts per id so id alone is enough.
-	const query = untrack(() =>
+	const outboundQuery = untrack(() =>
 		createQuery<SearchResponse>({
-			queryKey: ['trip-search', tripId],
+			queryKey: ['trip-search', tripId, trip?.updatedAt],
 			queryFn: () => {
 				if (!trip) throw new Error('no trip');
 				return postSearch(tripToSearchRequest(trip));
@@ -37,17 +39,32 @@
 		})
 	);
 
+	const returnQuery = untrack(() =>
+		createQuery<SearchResponse>({
+			queryKey: ['trip-search', tripId, trip?.updatedAt, 'return'],
+			queryFn: () => {
+				if (!trip?.returnDate) throw new Error('no return date');
+				return postSearch(tripToReturnSearchRequest(trip));
+			},
+			enabled: !!trip?.returnDate,
+			staleTime: 60_000
+		})
+	);
+
 	function bestMilesIn(r: AwardAvailability, restrictTo: Cabin | 'all'): number {
 		let min = Infinity;
-		for (const [c, info] of Object.entries(r.cabins) as [Cabin, CabinAvailability][]) {
+		for (const [c, info] of Object.entries(r.cabins) as [
+			Cabin,
+			CabinAvailability | undefined
+		][]) {
+			if (!info) continue;
 			if (restrictTo !== 'all' && c !== restrictTo) continue;
 			if (info.mileageCost < min) min = info.mileageCost;
 		}
 		return min;
 	}
 
-	const filtered = $derived.by((): AwardAvailability[] => {
-		const data = $query.data?.results ?? [];
+	function filterAndSort(data: AwardAvailability[]): AwardAvailability[] {
 		const f = cabinFilter;
 		const rows = f === 'all' ? [...data] : data.filter((r) => r.cabins[f]?.available);
 		if (sortKey === 'date') {
@@ -58,26 +75,36 @@
 			return keyed.map((k) => k.r);
 		}
 		return rows;
-	});
+	}
+
+	const outboundFiltered = $derived.by(() => filterAndSort($outboundQuery.data?.results ?? []));
+	const returnFiltered = $derived.by(() => filterAndSort($returnQuery.data?.results ?? []));
 </script>
 
 <section class="page">
-	<a class="back" href="/"><ArrowLeft size={14} /> Watchlist</a>
+	<div class="top-bar">
+		<a class="back" href="/"><ArrowLeft size={14} /> Watchlist</a>
+		{#if trip}
+			<a class="edit" href="/trips/{trip.id}/edit"><Pencil size={14} /> Edit</a>
+		{/if}
+	</div>
 
 	{#if !trip}
-		<EmptyState
-			title="Trip not found"
-			description="This trip isn't on your watchlist — it may have been removed."
-		/>
+		<TripNotFound />
 	{:else}
 		<header class="head">
 			<div class="title">
 				<span class="airport">{trip.origin}</span>
 				<ArrowRight size={20} />
 				<span class="airport">{trip.destination}</span>
+				{#if trip.returnDate}
+					<span class="rt-tag">round trip</span>
+				{/if}
 			</div>
 			<div class="sub">
-				{formatDateLong(trip.departDate)}{trip.flexDays > 0 ? ` ± ${trip.flexDays} days` : ''}
+				{formatDateLong(trip.departDate)}{#if trip.returnDate}
+					<span class="sub-sep"> → </span>{formatDateLong(trip.returnDate)}{/if}
+				{trip.flexDays > 0 ? ` · ± ${trip.flexDays} days` : ''}
 			</div>
 		</header>
 
@@ -120,27 +147,47 @@
 			</div>
 		</div>
 
-		{#if $query.isLoading}
-			<div class="loading"><Loader2 size={16} class="spin" /> Searching seats.aero…</div>
-		{:else if $query.isError}
-			<div class="error">Something went wrong loading results.</div>
-		{:else if filtered.length === 0}
-			<EmptyState
-				title="No matching availability"
-				description="Try widening your date flex, adding programs, or removing the miles cap."
-			/>
+		{#snippet leg(
+			heading: string | null,
+			q: QueryObserverResult<SearchResponse>,
+			rows: AwardAvailability[]
+		)}
+			{#if heading}
+				<h3 class="leg-heading">{heading}</h3>
+			{/if}
+			{#if q.isLoading}
+				<div class="loading"><Loader2 size={16} class="spin" /> Searching seats.aero…</div>
+			{:else if q.isError}
+				<div class="error">Something went wrong loading results.</div>
+			{:else if rows.length === 0}
+				<EmptyState
+					title="No matching availability"
+					description="Try widening your date flex, adding programs, or removing the miles cap."
+				/>
+			{:else}
+				<div class="meta">
+					{rows.length} result{rows.length === 1 ? '' : 's'}
+					{#if q.data?.source === 'mock'}
+						<span class="mock-tag">mock data</span>
+					{/if}
+				</div>
+				<div class="list">
+					{#each rows as result (result.id)}
+						<AwardOptionRow {result} />
+					{/each}
+				</div>
+			{/if}
+		{/snippet}
+
+		{#if trip.returnDate}
+			<section class="leg-section">
+				{@render leg(`Outbound — ${trip.origin} → ${trip.destination}`, $outboundQuery, outboundFiltered)}
+			</section>
+			<section class="leg-section">
+				{@render leg(`Return — ${trip.destination} → ${trip.origin}`, $returnQuery, returnFiltered)}
+			</section>
 		{:else}
-			<div class="meta">
-				{filtered.length} result{filtered.length === 1 ? '' : 's'}
-				{#if $query.data?.source === 'mock'}
-					<span class="mock-tag">mock data</span>
-				{/if}
-			</div>
-			<div class="list">
-				{#each filtered as result (result.id)}
-					<AwardOptionRow {result} />
-				{/each}
-			</div>
+			{@render leg(null, $outboundQuery, outboundFiltered)}
 		{/if}
 	{/if}
 </section>
@@ -152,7 +199,14 @@
 		gap: var(--space-4);
 		padding-top: var(--space-4);
 	}
-	.back {
+	.top-bar {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-3);
+	}
+	.back,
+	.edit {
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
@@ -161,7 +215,8 @@
 		text-decoration: none;
 		width: fit-content;
 	}
-	.back:hover {
+	.back:hover,
+	.edit:hover {
 		color: var(--color-text);
 	}
 	.head {
@@ -182,6 +237,33 @@
 	.sub {
 		color: var(--color-muted);
 		font-size: 14px;
+	}
+	.sub-sep {
+		opacity: 0.6;
+	}
+	.rt-tag {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
+		border-radius: var(--radius-sm);
+		padding: 2px 6px;
+		margin-left: var(--space-2);
+	}
+	.leg-section {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-3);
+	}
+	.leg-heading {
+		font-size: 14px;
+		font-weight: 600;
+		color: var(--color-muted);
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
 	}
 	.toolbar {
 		display: flex;

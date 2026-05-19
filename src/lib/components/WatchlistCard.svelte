@@ -14,29 +14,46 @@
 		trip,
 		results,
 		loading,
+		returnResults,
+		returnLoading = false,
 		onDelete
 	}: {
 		trip: WatchedTrip;
 		results: AwardAvailability[] | undefined;
 		loading: boolean;
+		returnResults?: AwardAvailability[] | undefined;
+		returnLoading?: boolean;
 		onDelete: (id: string) => void;
 	} = $props();
 
-	const best = $derived.by(() => {
-		const out: Partial<Record<Cabin, { miles: number; date: string; program: string }>> = {};
-		if (!results) return out;
-		for (const r of results) {
-			for (const [cabin, info] of Object.entries(r.cabins) as [Cabin, CabinAvailability][]) {
+	type BestPerCabin = Partial<Record<Cabin, { miles: number; date: string }>>;
+
+	function computeBest(rows: AwardAvailability[] | undefined): BestPerCabin {
+		const out: BestPerCabin = {};
+		if (!rows) return out;
+		for (const r of rows) {
+			for (const [cabin, info] of Object.entries(r.cabins) as [
+				Cabin,
+				CabinAvailability | undefined
+			][]) {
+				if (!info) continue;
 				const current = out[cabin];
 				if (!current || info.mileageCost < current.miles) {
-					out[cabin] = { miles: info.mileageCost, date: r.date, program: r.program };
+					out[cabin] = { miles: info.mileageCost, date: r.date };
 				}
 			}
 		}
 		return out;
-	});
+	}
 
-	const hasAny = $derived(results && results.length > 0);
+	const bestOut = $derived(computeBest(results));
+	const bestReturn = $derived(computeBest(returnResults));
+
+	const isRoundTrip = $derived(!!trip.returnDate);
+	const anyLoading = $derived(loading || (isRoundTrip && returnLoading));
+	const hasAny = $derived(
+		(results && results.length > 0) || (returnResults && returnResults.length > 0)
+	);
 </script>
 
 <article class="card">
@@ -57,7 +74,10 @@
 	</header>
 
 	<div class="meta">
-		<span>{formatDate(trip.departDate)}</span>
+		<span>
+			{formatDate(trip.departDate)}{#if trip.returnDate}
+				<span class="meta-sep"> → </span>{formatDate(trip.returnDate)}{/if}
+		</span>
 		{#if trip.flexDays > 0}
 			<span class="flex">±{trip.flexDays}d</span>
 		{/if}
@@ -70,19 +90,29 @@
 	</div>
 
 	<div class="results">
-		{#if loading}
+		{#if anyLoading}
 			<div class="loading"><Loader2 size={14} class="spin" /> Searching…</div>
 		{:else if !hasAny}
 			<div class="none">No matching availability.</div>
 		{:else}
 			<div class="best-grid">
 				{#each trip.cabins as cabin (cabin)}
-					{@const b = best[cabin]}
-					<div class="best-cell" class:empty={!b}>
+					{@const o = bestOut[cabin]}
+					{@const r = isRoundTrip ? bestReturn[cabin] : undefined}
+					<div class="best-cell" class:empty={!o && !r}>
 						<div class="best-cabin">{CABIN_LABELS[cabin]}</div>
-						{#if b}
-							<div class="best-miles">{formatMiles(b.miles)}</div>
-							<div class="best-when">{formatDate(b.date)}</div>
+						{#if isRoundTrip}
+							<div class="leg">
+								<span class="leg-tag">OUT</span>
+								<span class="leg-miles">{o ? formatMiles(o.miles) : '—'}</span>
+							</div>
+							<div class="leg">
+								<span class="leg-tag">RET</span>
+								<span class="leg-miles">{r ? formatMiles(r.miles) : '—'}</span>
+							</div>
+						{:else if o}
+							<div class="best-miles">{formatMiles(o.miles)}</div>
+							<div class="best-when">{formatDate(o.date)}</div>
 						{:else}
 							<div class="best-miles dim">—</div>
 						{/if}
@@ -212,6 +242,28 @@
 		font-size: 11px;
 		color: var(--color-muted);
 		margin-top: 2px;
+	}
+	.leg {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--space-2);
+		margin-top: 2px;
+	}
+	.leg-tag {
+		font-family: var(--font-mono);
+		font-size: 9px;
+		font-weight: 600;
+		letter-spacing: 0.06em;
+		color: var(--color-muted);
+	}
+	.leg-miles {
+		font-family: var(--font-mono);
+		font-size: 13px;
+		font-weight: 600;
+	}
+	.meta-sep {
+		color: var(--color-muted);
 	}
 	.footer-link {
 		display: inline-flex;

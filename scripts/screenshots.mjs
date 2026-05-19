@@ -11,6 +11,7 @@ const PORT = 5179;
 const BASE = `http://127.0.0.1:${PORT}`;
 const OUT = 'docs/screenshots';
 
+const NOW = Date.now();
 const SAMPLE_TRIPS = [
 	{
 		id: 'sample1',
@@ -20,18 +21,21 @@ const SAMPLE_TRIPS = [
 		flexDays: 3,
 		cabins: ['J', 'F'],
 		programs: ['aeroplan', 'aa', 'united', 'flyingblue'],
-		createdAt: Date.now()
+		createdAt: NOW,
+		updatedAt: NOW
 	},
 	{
 		id: 'sample2',
 		origin: 'SFO',
 		destination: 'LHR',
 		departDate: '2026-10-04',
+		returnDate: '2026-10-18',
 		flexDays: 2,
 		cabins: ['Y', 'W', 'J'],
 		programs: ['virgin', 'aa', 'flyingblue', 'ba'],
 		maxMiles: 90000,
-		createdAt: Date.now()
+		createdAt: NOW,
+		updatedAt: NOW
 	},
 	{
 		id: 'sample3',
@@ -42,7 +46,8 @@ const SAMPLE_TRIPS = [
 		cabins: ['J'],
 		programs: ['aeroplan', 'united', 'alaska'],
 		maxMiles: 100000,
-		createdAt: Date.now()
+		createdAt: NOW,
+		updatedAt: NOW
 	}
 ];
 
@@ -125,15 +130,29 @@ try {
 		await shot(browser, 'add-trip', scheme, async (page) => {
 			await page.goto(BASE + '/trips/new');
 			await settle(page);
+			const dateInputs = page.locator('input[type="date"]');
 			await page.fill('input[placeholder="JFK"]', 'JFK');
 			await page.fill('input[placeholder="NRT"]', 'NRT');
-			await page.fill('input[type="date"]', '2026-08-15');
+			await dateInputs.nth(0).fill('2026-08-15');
+			await dateInputs.nth(1).fill('2026-08-22');
 			await page.waitForTimeout(200);
 		});
 
 		await shot(browser, 'trip-detail', scheme, async (page) => {
 			await seedWatchlist(page);
 			await page.goto(BASE + '/trips/sample1');
+			await settle(page);
+		});
+
+		await shot(browser, 'trip-detail-roundtrip', scheme, async (page) => {
+			await seedWatchlist(page);
+			await page.goto(BASE + '/trips/sample2');
+			await settle(page);
+		});
+
+		await shot(browser, 'trip-edit', scheme, async (page) => {
+			await seedWatchlist(page);
+			await page.goto(BASE + '/trips/sample2/edit');
 			await settle(page);
 		});
 	}
