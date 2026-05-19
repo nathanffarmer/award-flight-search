@@ -47,10 +47,12 @@ const SAMPLE_TRIPS = [
 ];
 
 async function startDevServer() {
+	// detached so we can SIGTERM the whole process group on shutdown — npm
+	// spawns sh spawns vite, and a non-group kill would leave vite orphaned.
 	const proc = spawn(
 		'npm',
 		['run', 'dev', '--', '--port', String(PORT), '--host', '127.0.0.1'],
-		{ stdio: ['ignore', 'pipe', 'pipe'] }
+		{ stdio: ['ignore', 'pipe', 'pipe'], detached: true }
 	);
 	proc.on('error', (err) => console.error('[dev]', err));
 	const ready = new Promise((resolve, reject) => {
@@ -67,8 +69,15 @@ async function startDevServer() {
 	return proc;
 }
 
-async function shot(name, scheme, fn) {
-	const browser = await chromium.launch();
+function stopDevServer(proc) {
+	try {
+		process.kill(-proc.pid, 'SIGTERM');
+	} catch {
+		proc.kill('SIGTERM');
+	}
+}
+
+async function shot(browser, name, scheme, fn) {
 	const ctx = await browser.newContext({
 		viewport: { width: 1200, height: 900 },
 		colorScheme: scheme,
@@ -79,7 +88,7 @@ async function shot(name, scheme, fn) {
 	const path = `${OUT}/${name}-${scheme}.png`;
 	await page.screenshot({ path, fullPage: true });
 	console.log('wrote', path);
-	await browser.close();
+	await ctx.close();
 }
 
 async function seedWatchlist(page) {
@@ -96,23 +105,24 @@ async function settle(page) {
 
 await mkdir(OUT, { recursive: true });
 const dev = await startDevServer();
+const browser = await chromium.launch();
 
 try {
 	for (const scheme of ['light', 'dark']) {
-		await shot('home-empty', scheme, async (page) => {
+		await shot(browser, 'home-empty', scheme, async (page) => {
 			await page.goto(BASE + '/');
 			await page.evaluate(() => localStorage.removeItem('award-watchlist-v1'));
 			await page.goto(BASE + '/');
 			await settle(page);
 		});
 
-		await shot('home-watchlist', scheme, async (page) => {
+		await shot(browser, 'home-watchlist', scheme, async (page) => {
 			await seedWatchlist(page);
 			await page.goto(BASE + '/');
 			await settle(page);
 		});
 
-		await shot('add-trip', scheme, async (page) => {
+		await shot(browser, 'add-trip', scheme, async (page) => {
 			await page.goto(BASE + '/trips/new');
 			await settle(page);
 			await page.fill('input[placeholder="JFK"]', 'JFK');
@@ -121,12 +131,13 @@ try {
 			await page.waitForTimeout(200);
 		});
 
-		await shot('trip-detail', scheme, async (page) => {
+		await shot(browser, 'trip-detail', scheme, async (page) => {
 			await seedWatchlist(page);
 			await page.goto(BASE + '/trips/sample1');
 			await settle(page);
 		});
 	}
 } finally {
-	dev.kill('SIGTERM');
+	await browser.close();
+	stopDevServer(dev);
 }

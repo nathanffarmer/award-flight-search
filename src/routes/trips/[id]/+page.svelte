@@ -8,8 +8,14 @@
 	import CabinBadge from '$lib/components/CabinBadge.svelte';
 	import EmptyState from '$lib/components/EmptyState.svelte';
 	import { formatDateLong } from '$lib/format';
-	import type { AwardAvailability, Cabin, SearchResponse } from '$lib/types';
-	import { CABIN_LABELS } from '$lib/types';
+	import {
+		CABIN_LABELS,
+		tripToSearchRequest,
+		type AwardAvailability,
+		type CabinAvailability,
+		type Cabin,
+		type SearchResponse
+	} from '$lib/types';
 	import { ArrowLeft, ArrowRight, Loader2 } from '@lucide/svelte';
 
 	const tripId = $derived(page.params.id ?? '');
@@ -18,45 +24,38 @@
 	let cabinFilter = $state<Cabin | 'all'>('all');
 	let sortKey = $state<'miles' | 'date'>('miles');
 
-	// queryFn reads `trip` reactively via closure; queryKey is captured at
-	// mount (the page remounts per id so that's correct).
+	// queryKey captured at mount; the page remounts per id so id alone is enough.
 	const query = untrack(() =>
 		createQuery<SearchResponse>({
 			queryKey: ['trip-search', tripId],
 			queryFn: () => {
 				if (!trip) throw new Error('no trip');
-				return postSearch({
-					origin: trip.origin,
-					destination: trip.destination,
-					departDate: trip.departDate,
-					flexDays: trip.flexDays,
-					cabins: trip.cabins,
-					programs: trip.programs,
-					maxMiles: trip.maxMiles
-				});
+				return postSearch(tripToSearchRequest(trip));
 			},
 			enabled: !!trip,
 			staleTime: 60_000
 		})
 	);
 
+	function bestMilesIn(r: AwardAvailability, restrictTo: Cabin | 'all'): number {
+		let min = Infinity;
+		for (const [c, info] of Object.entries(r.cabins) as [Cabin, CabinAvailability][]) {
+			if (restrictTo !== 'all' && c !== restrictTo) continue;
+			if (info.mileageCost < min) min = info.mileageCost;
+		}
+		return min;
+	}
+
 	const filtered = $derived.by((): AwardAvailability[] => {
-		const data: AwardAvailability[] = $query.data?.results ?? [];
+		const data = $query.data?.results ?? [];
 		const f = cabinFilter;
-		const filteredRows = f === 'all' ? data : data.filter((r) => r.cabins[f]?.available);
-		const rows = [...filteredRows];
+		const rows = f === 'all' ? [...data] : data.filter((r) => r.cabins[f]?.available);
 		if (sortKey === 'date') {
 			rows.sort((a, b) => a.date.localeCompare(b.date));
 		} else {
-			const bestMiles = (r: AwardAvailability) => {
-				let min = Infinity;
-				for (const [c, info] of Object.entries(r.cabins) as [Cabin, { mileageCost: number }][]) {
-					if (f !== 'all' && c !== f) continue;
-					if (info.mileageCost < min) min = info.mileageCost;
-				}
-				return min;
-			};
-			rows.sort((a, b) => bestMiles(a) - bestMiles(b));
+			const keyed = rows.map((r) => ({ r, key: bestMilesIn(r, f) }));
+			keyed.sort((a, b) => a.key - b.key);
+			return keyed.map((k) => k.r);
 		}
 		return rows;
 	});

@@ -1,6 +1,12 @@
 <script lang="ts">
-	import type { Cabin, Program, WatchedTrip } from '$lib/types';
-	import { CABIN_LABELS, PROGRAM_LABELS } from '$lib/types';
+	import {
+		CABIN_LABELS,
+		CABIN_ORDER,
+		PROGRAM_LABELS,
+		type Cabin,
+		type Program,
+		type WatchedTrip
+	} from '$lib/types';
 
 	let {
 		onSubmit,
@@ -20,19 +26,8 @@
 
 	let error = $state<string | null>(null);
 
-	const ALL_CABINS: Cabin[] = ['Y', 'W', 'J', 'F'];
-	const ALL_PROGRAMS: Program[] = [
-		'aeroplan',
-		'united',
-		'aa',
-		'delta',
-		'alaska',
-		'flyingblue',
-		'virgin',
-		'lifemiles',
-		'etihad',
-		'ba'
-	];
+	const ALL_CABINS = CABIN_ORDER;
+	const ALL_PROGRAMS = Object.keys(PROGRAM_LABELS) as Program[];
 
 	function toggleCabin(c: Cabin) {
 		cabins = cabins.includes(c) ? cabins.filter((x) => x !== c) : [...cabins, c];
