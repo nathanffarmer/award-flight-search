@@ -34,11 +34,18 @@ function createWatchlist() {
 		get(id: string) {
 			return trips.find((t) => t.id === id);
 		},
-		add(trip: Omit<WatchedTrip, 'id' | 'createdAt'>): WatchedTrip {
-			const full: WatchedTrip = { ...trip, id: makeId(), createdAt: Date.now() };
+		add(trip: Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'>): WatchedTrip {
+			const now = Date.now();
+			const full: WatchedTrip = { ...trip, id: makeId(), createdAt: now, updatedAt: now };
 			trips = [full, ...trips];
 			save(trips);
 			return full;
+		},
+		update(id: string, changes: Partial<Omit<WatchedTrip, 'id' | 'createdAt'>>): void {
+			trips = trips.map((t) =>
+				t.id === id ? { ...t, ...changes, updatedAt: Date.now() } : t
+			);
+			save(trips);
 		},
 		remove(id: string) {
 			trips = trips.filter((t) => t.id !== id);

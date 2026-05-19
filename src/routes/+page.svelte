@@ -33,7 +33,7 @@
 		</EmptyState>
 	{:else}
 		<div class="grid">
-			{#each trips as trip (trip.id)}
+			{#each trips as trip (`${trip.id}:${trip.updatedAt}`)}
 				<TripCardWithData {trip} onDelete={(id) => watchlist.remove(id)} />
 			{/each}
 		</div>

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import {
 		CABIN_LABELS,
 		CABIN_ORDER,
@@ -9,20 +10,28 @@
 	} from '$lib/types';
 
 	let {
+		initialTrip,
+		submitLabel = 'Add to watchlist',
 		onSubmit,
 		onCancel
 	}: {
-		onSubmit: (trip: Omit<WatchedTrip, 'id' | 'createdAt'>) => void;
+		initialTrip?: WatchedTrip;
+		submitLabel?: string;
+		onSubmit: (trip: Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'>) => void;
 		onCancel?: () => void;
 	} = $props();
 
-	let origin = $state('');
-	let destination = $state('');
-	let departDate = $state('');
-	let flexDays = $state(3);
-	let maxMiles = $state<number | null>(null);
-	let cabins = $state<Cabin[]>(['J']);
-	let programs = $state<Program[]>(['aeroplan', 'aa', 'united', 'flyingblue']);
+	// initialTrip is read once at mount. Parents that need to swap trips must
+	// remount the component (e.g. via a keyed wrapper or distinct route).
+	const init = untrack(() => initialTrip);
+	let origin = $state(init?.origin ?? '');
+	let destination = $state(init?.destination ?? '');
+	let departDate = $state(init?.departDate ?? '');
+	let returnDate = $state(init?.returnDate ?? '');
+	let flexDays = $state(init?.flexDays ?? 3);
+	let maxMiles = $state<number | null>(init?.maxMiles ?? null);
+	let cabins = $state<Cabin[]>(init?.cabins ?? ['J']);
+	let programs = $state<Program[]>(init?.programs ?? ['aeroplan', 'aa', 'united', 'flyingblue']);
 
 	let error = $state<string | null>(null);
 
@@ -52,6 +61,10 @@
 			error = 'Pick a departure date.';
 			return;
 		}
+		if (returnDate && returnDate <= departDate) {
+			error = 'Return date must be after the departure date.';
+			return;
+		}
 		if (cabins.length === 0) {
 			error = 'Pick at least one cabin.';
 			return;
@@ -65,6 +78,7 @@
 			origin: o,
 			destination: d,
 			departDate,
+			returnDate: returnDate || undefined,
 			flexDays,
 			cabins,
 			programs,
@@ -103,8 +117,25 @@
 			<input type="date" bind:value={departDate} />
 		</label>
 		<label>
+			<span>Return <span class="hint">(leave blank for one-way)</span></span>
+			<input type="date" bind:value={returnDate} min={departDate || undefined} />
+		</label>
+	</div>
+
+	<div class="row two">
+		<label>
 			<span>Flex (± days)</span>
 			<input type="number" min="0" max="14" bind:value={flexDays} />
+		</label>
+		<label>
+			<span>Max miles (optional)</span>
+			<input
+				type="number"
+				min="0"
+				step="1000"
+				placeholder="e.g. 80000"
+				bind:value={maxMiles}
+			/>
 		</label>
 	</div>
 
@@ -140,17 +171,6 @@
 		</div>
 	</fieldset>
 
-	<label>
-		<span>Max miles (optional)</span>
-		<input
-			type="number"
-			min="0"
-			step="1000"
-			placeholder="e.g. 80000"
-			bind:value={maxMiles}
-		/>
-	</label>
-
 	{#if error}
 		<div class="error">{error}</div>
 	{/if}
@@ -159,7 +179,7 @@
 		{#if onCancel}
 			<button type="button" class="secondary" onclick={onCancel}>Cancel</button>
 		{/if}
-		<button type="submit" class="primary">Add to watchlist</button>
+		<button type="submit" class="primary">{submitLabel}</button>
 	</div>
 </form>
 
@@ -211,6 +231,10 @@
 		padding: 0;
 		font-size: 13px;
 		font-weight: 500;
+	}
+	.hint {
+		font-weight: 400;
+		color: var(--color-muted);
 	}
 	.chips {
 		display: flex;
