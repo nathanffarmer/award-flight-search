@@ -22,5 +22,6 @@ Thumbs.db
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
-# Claude Code per-commit /simplify marker (managed by the PreToolUse hook)
+# Claude Code per-commit /simplify hook state
 .claude/.simplify-ok
+.claude/.pre-commit-head

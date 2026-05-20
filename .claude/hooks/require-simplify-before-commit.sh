@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Block `git commit` unless /simplify has been run on the current diff.
+# PreToolUse gate: block `git commit` unless /simplify has reviewed the diff.
 #
 # Workflow:
 #   1. Run /simplify (or invoke the simplify skill)
@@ -7,11 +7,13 @@
 #   3. touch .claude/.simplify-ok
 #   4. git commit ...
 #
-# The marker is consumed on every commit attempt that passes, so the next
-# commit re-requires /simplify. If any tracked-or-new file is modified after
-# the marker is touched, the hook blocks — the diff has moved on.
+# This hook only validates. The marker is consumed by the companion
+# PostToolUse hook (consume-simplify-marker.sh) and only when the commit
+# actually lands — a failed commit leaves the marker so the retry isn't
+# blocked. HEAD is recorded here so the PostToolUse hook can detect that.
 
 MARKER=".claude/.simplify-ok"
+HEAD_FILE=".claude/.pre-commit-head"
 
 deny() {
 	jq -nc --arg reason "$1" \
@@ -19,19 +21,24 @@ deny() {
 	exit 0
 }
 
+# Epoch mtime of a file — Linux (stat -c) with a BSD/macOS (stat -f) fallback.
+mtime() {
+	stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null
+}
+
 if [ ! -f "$MARKER" ]; then
 	deny "Run /simplify on the current diff before committing, address any findings, then 'touch $MARKER' and retry the commit."
 fi
 
-marker_ts=$(stat -c %Y "$MARKER" 2>/dev/null || stat -f %m "$MARKER" 2>/dev/null || echo 0)
+marker_ts=$(mtime "$MARKER" || echo 0)
 
 newer_ts=$(git ls-files --modified --others --exclude-standard 2>/dev/null | while IFS= read -r f; do
-	[ -f "$f" ] && (stat -c %Y "$f" 2>/dev/null || stat -f %m "$f" 2>/dev/null)
+	[ -f "$f" ] && mtime "$f"
 done | sort -nr | head -1)
 
 if [ -n "$newer_ts" ] && [ "$newer_ts" -gt "$marker_ts" ]; then
 	deny "Files have changed since /simplify last ran. Re-run /simplify, refresh $MARKER, then retry the commit."
 fi
 
-rm -f "$MARKER"
+git rev-parse HEAD > "$HEAD_FILE" 2>/dev/null || echo "none" > "$HEAD_FILE"
 exit 0
