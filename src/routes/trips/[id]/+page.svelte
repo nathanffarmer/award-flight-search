@@ -19,13 +19,14 @@
 		type SearchResponse
 	} from '$lib/types';
 	import type { QueryObserverResult } from '@tanstack/svelte-query';
-	import { ArrowLeft, ArrowRight, Loader2, Pencil } from '@lucide/svelte';
+	import { ArrowLeft, ArrowRight, Loader2, Pencil, Plane } from '@lucide/svelte';
 
 	const tripId = $derived(page.params.id ?? '');
 	const trip = $derived(watchlist.get(tripId));
 
 	let cabinFilter = $state<Cabin | 'all'>('all');
-	let sortKey = $state<'miles' | 'date'>('miles');
+	let sortKey = $state<'miles' | 'date' | 'taxes'>('miles');
+	let directOnly = $state(false);
 
 	const outboundQuery = untrack(() =>
 		createQuery<SearchResponse>({
@@ -64,11 +65,22 @@
 		return min;
 	}
 
+	function hasDirectIn(r: AwardAvailability, restrictTo: Cabin | 'all'): boolean {
+		if (restrictTo !== 'all') return r.cabins[restrictTo]?.direct ?? false;
+		for (const info of Object.values(r.cabins) as (CabinAvailability | undefined)[]) {
+			if (info?.direct) return true;
+		}
+		return false;
+	}
+
 	function filterAndSort(data: AwardAvailability[]): AwardAvailability[] {
 		const f = cabinFilter;
-		const rows = f === 'all' ? [...data] : data.filter((r) => r.cabins[f]?.available);
+		let rows = f === 'all' ? [...data] : data.filter((r) => r.cabins[f]?.available);
+		if (directOnly) rows = rows.filter((r) => hasDirectIn(r, f));
 		if (sortKey === 'date') {
 			rows.sort((a, b) => a.date.localeCompare(b.date));
+		} else if (sortKey === 'taxes') {
+			rows.sort((a, b) => a.taxesUSD - b.taxesUSD);
 		} else {
 			const keyed = rows.map((r) => ({ r, key: bestMilesIn(r, f) }));
 			keyed.sort((a, b) => a.key - b.key);
@@ -109,7 +121,7 @@
 		</header>
 
 		<div class="toolbar">
-			<div class="filter">
+			<div class="toolbar-group">
 				<span class="label">Cabin</span>
 				<button
 					type="button"
@@ -130,7 +142,7 @@
 				{/each}
 			</div>
 
-			<div class="sort">
+			<div class="toolbar-group">
 				<span class="label">Sort</span>
 				<button
 					type="button"
@@ -144,6 +156,25 @@
 					class:on={sortKey === 'date'}
 					onclick={() => (sortKey = 'date')}>Date</button
 				>
+				<button
+					type="button"
+					class="tab"
+					class:on={sortKey === 'taxes'}
+					onclick={() => (sortKey = 'taxes')}>Taxes</button
+				>
+			</div>
+
+			<div class="toolbar-group">
+				<button
+					type="button"
+					class="tab"
+					class:on={directOnly}
+					onclick={() => (directOnly = !directOnly)}
+					aria-pressed={directOnly}
+				>
+					<Plane size={14} />
+					Direct only
+				</button>
 			</div>
 		</div>
 
@@ -227,6 +258,7 @@
 	.title {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: var(--space-3);
 		font-size: 28px;
 		font-weight: 600;
@@ -251,7 +283,7 @@
 		border: 1px solid color-mix(in srgb, var(--color-accent) 25%, transparent);
 		border-radius: var(--radius-sm);
 		padding: 2px 6px;
-		margin-left: var(--space-2);
+		white-space: nowrap;
 	}
 	.leg-section {
 		display: flex;
@@ -268,18 +300,22 @@
 	.toolbar {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--space-4);
+		gap: var(--space-3) var(--space-4);
 		padding: var(--space-3);
 		background: var(--color-surface);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-md);
 	}
-	.filter,
-	.sort {
+	.toolbar-group {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
 		flex-wrap: wrap;
+	}
+	@media (max-width: 600px) {
+		.toolbar-group {
+			flex-basis: 100%;
+		}
 	}
 	.label {
 		font-size: 12px;

@@ -211,7 +211,7 @@
 	}
 	.best-grid {
 		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+		grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
 		gap: var(--space-2);
 	}
 	.best-cell {
