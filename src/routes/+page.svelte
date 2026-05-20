@@ -72,6 +72,7 @@
 		border-radius: var(--radius-sm);
 		font-size: 14px;
 		font-weight: 500;
+		white-space: nowrap;
 	}
 	.add-button:hover {
 		filter: brightness(1.05);

@@ -196,6 +196,11 @@
 	.row.two {
 		grid-template-columns: 1fr 1fr;
 	}
+	@media (max-width: 600px) {
+		.row.two {
+			grid-template-columns: 1fr;
+		}
+	}
 	label {
 		display: flex;
 		flex-direction: column;
