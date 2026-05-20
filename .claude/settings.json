@@ -12,6 +12,30 @@
 					}
 				]
 			}
+		],
+		"PostToolUse": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash .claude/hooks/consume-simplify-marker.sh",
+						"if": "Bash(git commit*)"
+					}
+				]
+			}
+		],
+		"PostToolUseFailure": [
+			{
+				"matcher": "Bash",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash .claude/hooks/consume-simplify-marker.sh",
+						"if": "Bash(git commit*)"
+					}
+				]
+			}
 		]
 	}
 }
