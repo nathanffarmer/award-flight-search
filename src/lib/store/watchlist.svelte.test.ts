@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// Mock $app/environment so the store thinks it's running in a browser. If the
+// store ever imports from another $app/* module, that import will need a
+// matching mock here.
 vi.mock('$app/environment', () => ({
 	browser: true,
 	dev: true,
@@ -8,9 +11,11 @@ vi.mock('$app/environment', () => ({
 }));
 
 import { createWatchlist, KEY } from './watchlist.svelte';
-import type { WatchedTrip } from '$lib/types';
+import type { TripInput, WatchedTrip } from '$lib/types';
 
-const sampleInput: Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'> = {
+const FROZEN_NOW = new Date('2026-01-01T00:00:00Z').getTime();
+
+const sampleInput: TripInput = {
 	origin: 'JFK',
 	destination: 'NRT',
 	departDate: '2026-08-15',
@@ -25,12 +30,13 @@ function readStored(): WatchedTrip[] {
 
 beforeEach(() => {
 	vi.useFakeTimers();
-	vi.setSystemTime(new Date('2026-01-01T00:00:00Z'));
+	vi.setSystemTime(FROZEN_NOW);
 	localStorage.clear();
 });
 
 afterEach(() => {
 	vi.useRealTimers();
+	localStorage.clear();
 });
 
 describe('createWatchlist', () => {
@@ -42,8 +48,8 @@ describe('createWatchlist', () => {
 		const wl = createWatchlist();
 		const t = wl.add(sampleInput);
 		expect(t.id).toBeTruthy();
-		expect(t.createdAt).toBe(Date.now());
-		expect(t.updatedAt).toBe(t.createdAt);
+		expect(t.createdAt).toBe(FROZEN_NOW);
+		expect(t.updatedAt).toBe(FROZEN_NOW);
 		expect(wl.all).toHaveLength(1);
 	});
 

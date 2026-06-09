@@ -14,10 +14,10 @@
 		tripToSearchRequest,
 		tripToReturnSearchRequest,
 		type AwardAvailability,
-		type CabinAvailability,
 		type Cabin,
 		type SearchResponse
 	} from '$lib/types';
+	import { filterAndSort, type SortKey } from '$lib/filter-sort';
 	import type { QueryObserverResult } from '@tanstack/svelte-query';
 	import { ArrowLeft, ArrowRight, Loader2, Pencil, Plane } from '@lucide/svelte';
 
@@ -25,7 +25,7 @@
 	const trip = $derived(watchlist.get(tripId));
 
 	let cabinFilter = $state<Cabin | 'all'>('all');
-	let sortKey = $state<'miles' | 'date' | 'taxes'>('miles');
+	let sortKey = $state<SortKey>('miles');
 	let directOnly = $state(false);
 
 	const outboundQuery = untrack(() =>
@@ -52,45 +52,20 @@
 		})
 	);
 
-	function bestMilesIn(r: AwardAvailability, restrictTo: Cabin | 'all'): number {
-		let min = Infinity;
-		for (const [c, info] of Object.entries(r.cabins) as [
-			Cabin,
-			CabinAvailability | undefined
-		][]) {
-			if (!info) continue;
-			if (restrictTo !== 'all' && c !== restrictTo) continue;
-			if (info.mileageCost < min) min = info.mileageCost;
-		}
-		return min;
-	}
-
-	function hasDirectIn(r: AwardAvailability, restrictTo: Cabin | 'all'): boolean {
-		if (restrictTo !== 'all') return r.cabins[restrictTo]?.direct ?? false;
-		for (const info of Object.values(r.cabins) as (CabinAvailability | undefined)[]) {
-			if (info?.direct) return true;
-		}
-		return false;
-	}
-
-	function filterAndSort(data: AwardAvailability[]): AwardAvailability[] {
-		const f = cabinFilter;
-		let rows = f === 'all' ? [...data] : data.filter((r) => r.cabins[f]?.available);
-		if (directOnly) rows = rows.filter((r) => hasDirectIn(r, f));
-		if (sortKey === 'date') {
-			rows.sort((a, b) => a.date.localeCompare(b.date));
-		} else if (sortKey === 'taxes') {
-			rows.sort((a, b) => a.taxesUSD - b.taxesUSD);
-		} else {
-			const keyed = rows.map((r) => ({ r, key: bestMilesIn(r, f) }));
-			keyed.sort((a, b) => a.key - b.key);
-			return keyed.map((k) => k.r);
-		}
-		return rows;
-	}
-
-	const outboundFiltered = $derived.by(() => filterAndSort($outboundQuery.data?.results ?? []));
-	const returnFiltered = $derived.by(() => filterAndSort($returnQuery.data?.results ?? []));
+	const outboundFiltered = $derived.by(() =>
+		filterAndSort($outboundQuery.data?.results ?? [], {
+			cabin: cabinFilter,
+			sort: sortKey,
+			directOnly
+		})
+	);
+	const returnFiltered = $derived.by(() =>
+		filterAndSort($returnQuery.data?.results ?? [], {
+			cabin: cabinFilter,
+			sort: sortKey,
+			directOnly
+		})
+	);
 </script>
 
 <section class="page">

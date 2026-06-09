@@ -75,11 +75,13 @@ export interface SearchRequest {
 	origin: string;
 	destination: string;
 	departDate: string;
-	flexDays: number;
+	flexDays?: number;
 	cabins: Cabin[];
 	programs: Program[];
 	maxMiles?: number;
 }
+
+export type TripInput = Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'>;
 
 export interface SearchResponse {
 	results: AwardAvailability[];

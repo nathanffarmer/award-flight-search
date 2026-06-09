@@ -54,7 +54,7 @@ function dateRange(center: string, flex: number): string[] {
 }
 
 export function generateMockResults(req: SearchRequest): AwardAvailability[] {
-	const dates = dateRange(req.departDate, req.flexDays);
+	const dates = dateRange(req.departDate, req.flexDays ?? 0);
 	const results: AwardAvailability[] = [];
 
 	for (const date of dates) {

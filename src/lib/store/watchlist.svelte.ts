@@ -1,4 +1,4 @@
-import type { WatchedTrip } from '$lib/types';
+import type { TripInput, WatchedTrip } from '$lib/types';
 import { browser } from '$app/environment';
 
 export const KEY = 'award-watchlist-v1';
@@ -34,14 +34,14 @@ export function createWatchlist() {
 		get(id: string) {
 			return trips.find((t) => t.id === id);
 		},
-		add(trip: Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'>): WatchedTrip {
+		add(trip: TripInput): WatchedTrip {
 			const now = Date.now();
 			const full: WatchedTrip = { ...trip, id: makeId(), createdAt: now, updatedAt: now };
 			trips = [full, ...trips];
 			save(trips);
 			return full;
 		},
-		update(id: string, changes: Partial<Omit<WatchedTrip, 'id' | 'createdAt'>>): void {
+		update(id: string, changes: Partial<TripInput>): void {
 			trips = trips.map((t) =>
 				t.id === id ? { ...t, ...changes, updatedAt: Date.now() } : t
 			);

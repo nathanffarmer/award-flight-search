@@ -41,6 +41,12 @@ describe('generateMockResults', () => {
 		for (const r of baseResults) {
 			expect(allowed.has(r.date)).toBe(true);
 		}
+		// The base request is dense enough that most of the 7-day window
+		// should be hit. Threshold is lenient (≥5 of 7) because the
+		// per-(date, program) skip rate is real; a tighter assertion would
+		// be seed-fragile. Catches dateRange silently narrowing the window.
+		const produced = new Set(baseResults.map((r) => r.date));
+		expect(produced.size).toBeGreaterThanOrEqual(5);
 	});
 
 	it('with flexDays 0 produces only the departure date', () => {

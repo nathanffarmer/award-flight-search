@@ -26,11 +26,12 @@ npm run dev
 
 ## Tests
 
-Vitest unit tests live next to the code they cover (`src/**/*.test.ts`) and run
-in a `jsdom` environment. They cover the pure logic — `format` helpers, the
-`generateMockResults` fixture generator, the `tripTo*SearchRequest` mappers —
-and the `localStorage`-backed watchlist store (`$app/environment` is mocked so
-the store runs outside SvelteKit).
+Vitest unit tests live next to the code they cover (`src/**/*.{test,spec}.ts`).
+
+The default test environment is `jsdom` so the watchlist store has
+`localStorage` for free. Pure-logic tests should add a top-of-file pragma —
+`// @vitest-environment node` — to skip jsdom startup; see the existing files
+for examples. CI runs both `npm run check` and `npm test` on every PR.
 
 ## Screenshots
 

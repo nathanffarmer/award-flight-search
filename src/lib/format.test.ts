@@ -35,22 +35,16 @@ describe('formatUSD', () => {
 
 describe('formatDate', () => {
 	it('formats an ISO date as a short weekday/month/day', () => {
-		const out = formatDate('2026-08-15');
-		expect(out).toContain('Aug');
-		expect(out).toContain('15');
+		expect(formatDate('2026-08-15')).toBe('Sat, Aug 15');
 	});
 
 	it('is timezone-safe (no off-by-one across the UTC boundary)', () => {
-		const out = formatDate('2026-01-01');
-		expect(out).toContain('Jan');
-		expect(out).toContain('1');
+		expect(formatDate('2026-01-01')).toBe('Thu, Jan 1');
 	});
 });
 
 describe('formatDateLong', () => {
 	it('formats an ISO date with the full month and year', () => {
-		const out = formatDateLong('2026-08-15');
-		expect(out).toContain('August');
-		expect(out).toContain('2026');
+		expect(formatDateLong('2026-08-15')).toBe('Saturday, August 15, 2026');
 	});
 });
