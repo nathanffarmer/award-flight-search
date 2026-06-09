@@ -1,7 +1,7 @@
 import type { WatchedTrip } from '$lib/types';
 import { browser } from '$app/environment';
 
-const KEY = 'award-watchlist-v1';
+export const KEY = 'award-watchlist-v1';
 
 function load(): WatchedTrip[] {
 	if (!browser) return [];
@@ -24,7 +24,7 @@ function makeId() {
 	return Math.random().toString(36).slice(2, 10);
 }
 
-function createWatchlist() {
+export function createWatchlist() {
 	let trips = $state<WatchedTrip[]>(load());
 
 	return {

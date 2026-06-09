@@ -20,7 +20,17 @@ npm run dev
 | `npm run build` | Production build |
 | `npm run preview` | Serve the production build locally |
 | `npm run check` | `svelte-check` + TypeScript |
+| `npm test` | Run the Vitest unit suite once |
+| `npm run test:watch` | Run Vitest in watch mode |
 | `npm run screenshots` | Regenerate `docs/screenshots/*.png` |
+
+## Tests
+
+Vitest unit tests live next to the code they cover (`src/**/*.test.ts`) and run
+in a `jsdom` environment. They cover the pure logic — `format` helpers, the
+`generateMockResults` fixture generator, the `tripTo*SearchRequest` mappers —
+and the `localStorage`-backed watchlist store (`$app/environment` is mocked so
+the store runs outside SvelteKit).
 
 ## Screenshots
 
