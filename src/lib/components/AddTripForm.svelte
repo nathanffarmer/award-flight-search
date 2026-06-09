@@ -6,8 +6,10 @@
 		PROGRAM_LABELS,
 		type Cabin,
 		type Program,
+		type TripInput,
 		type WatchedTrip
 	} from '$lib/types';
+	import { validateTripDraft } from '$lib/validate';
 
 	let {
 		initialTrip,
@@ -17,7 +19,7 @@
 	}: {
 		initialTrip?: WatchedTrip;
 		submitLabel?: string;
-		onSubmit: (trip: Omit<WatchedTrip, 'id' | 'createdAt' | 'updatedAt'>) => void;
+		onSubmit: (trip: TripInput) => void;
 		onCancel?: () => void;
 	} = $props();
 
@@ -48,42 +50,22 @@
 
 	function submit(e: Event) {
 		e.preventDefault();
-		error = null;
-
-		const o = origin.trim().toUpperCase();
-		const d = destination.trim().toUpperCase();
-
-		if (o.length !== 3 || d.length !== 3) {
-			error = 'Origin and destination must be 3-letter IATA codes.';
-			return;
-		}
-		if (!departDate) {
-			error = 'Pick a departure date.';
-			return;
-		}
-		if (returnDate && returnDate <= departDate) {
-			error = 'Return date must be after the departure date.';
-			return;
-		}
-		if (cabins.length === 0) {
-			error = 'Pick at least one cabin.';
-			return;
-		}
-		if (programs.length === 0) {
-			error = 'Pick at least one program.';
-			return;
-		}
-
-		onSubmit({
-			origin: o,
-			destination: d,
+		const result = validateTripDraft({
+			origin,
+			destination,
 			departDate,
-			returnDate: returnDate || undefined,
+			returnDate,
 			flexDays,
+			maxMiles,
 			cabins,
-			programs,
-			maxMiles: maxMiles ?? undefined
+			programs
 		});
+		if (!result.ok) {
+			error = result.error;
+			return;
+		}
+		error = null;
+		onSubmit(result.trip);
 	}
 </script>
 

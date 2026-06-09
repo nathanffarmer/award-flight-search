@@ -20,7 +20,18 @@ npm run dev
 | `npm run build` | Production build |
 | `npm run preview` | Serve the production build locally |
 | `npm run check` | `svelte-check` + TypeScript |
+| `npm test` | Run the Vitest unit suite once |
+| `npm run test:watch` | Run Vitest in watch mode |
 | `npm run screenshots` | Regenerate `docs/screenshots/*.png` |
+
+## Tests
+
+Vitest unit tests live next to the code they cover (`src/**/*.{test,spec}.ts`).
+
+The default test environment is `jsdom` so the watchlist store has
+`localStorage` for free. Pure-logic tests should add a top-of-file pragma —
+`// @vitest-environment node` — to skip jsdom startup; see the existing files
+for examples. CI runs both `npm run check` and `npm test` on every PR.
 
 ## Screenshots
 

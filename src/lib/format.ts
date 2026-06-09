@@ -9,7 +9,7 @@ export function formatUSD(n: number): string {
 
 export function formatDate(iso: string): string {
 	const d = new Date(iso + 'T00:00:00Z');
-	return d.toLocaleDateString(undefined, {
+	return d.toLocaleDateString('en-US', {
 		month: 'short',
 		day: 'numeric',
 		weekday: 'short',
@@ -19,7 +19,7 @@ export function formatDate(iso: string): string {
 
 export function formatDateLong(iso: string): string {
 	const d = new Date(iso + 'T00:00:00Z');
-	return d.toLocaleDateString(undefined, {
+	return d.toLocaleDateString('en-US', {
 		weekday: 'long',
 		month: 'long',
 		day: 'numeric',
