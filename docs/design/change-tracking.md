@@ -1,6 +1,10 @@
 # Change tracking
 
-> Status: design proposal, not yet implemented.
+> Status: deferred. The live seats.aero adapter takes priority now that an
+> API key exists, and the client-side snapshot slice (originally Slice 1)
+> has been dropped — see Slices for why. The diff-engine design below
+> (flatten, event types, significance threshold) is storage-agnostic and
+> carries forward unchanged into the eventual backend-based implementation.
 > Read time ~7 min.
 
 ## Problem
@@ -14,19 +18,29 @@ this turns the watchlist from a search front-end into a monitoring tool.
 
 ## Slices
 
-Three slices, each shippable as a PR. **All slices now sit behind the live
-seats.aero adapter** — an API key is available, so the adapter lands first
-and the diff engine gets real availability data from day one instead of
-deterministic mocks (whose diffs are meaningless).
+Originally three slices, with Slice 1 being a client-side IndexedDB
+snapshot store. **Slice 1 is dropped.** Its value proposition was diffs
+between the user's own visits — but with a metered API and refresh
+cooldowns, those snapshots arrive at sparse, irregular intervals, so
+"since you last looked" could mean 5 minutes or 5 days. Low-signal diffs
+for real storage complexity. The actual value — "a deal appeared while
+you weren't looking" — always required the backend, and the backend's
+server-side snapshot store would have replaced the client-side one anyway.
 
-1. **Snapshot store + diff engine** — client-side, no backend, no UI.
-2. **UI integration** — change badges on cards, "What's new" panel,
-   per-card Refresh button, "last viewed" tracking.
-3. **Server refresh + notifications** — needs a real backend. Out of
-   scope for now.
+Revised plan:
 
-Phase 3 intentionally last: cron + server persistence is infrastructure
-that only pays off once 1 and 2 prove the change feed is useful.
+1. **Live seats.aero adapter** (separate PR, not part of this design) —
+   prerequisite for everything below.
+2. **Backend change tracking** — server-side snapshot store, scheduled
+   refresh, diff on the server, change feed + notifications to clients.
+   One epic, designed when the adapter has proven out real data volumes
+   and rate limits.
+
+The data model, diff engine, significance threshold, and UI sections
+below remain the reference design for step 2 — only the storage location
+moves (IndexedDB → server). Ignore the IndexedDB-specific `SnapshotStore`
+plumbing (eviction cadence, transactions); those concerns transfer to the
+server store in spirit but not in code.
 
 ## Data model
 
@@ -235,13 +249,15 @@ Two left to decide; everything else is locked in the body.
    the simple cap fine? Default proposal: simple cap, revisit if anyone
    wants long-term trends.
 
-## Slice deliverables
+## What carries forward
 
-1. `src/lib/store/snapshots.ts`, `src/lib/diff.ts`, tests for both,
-   `viewedState` store. No UI. Ships green when diff + store tests pass
-   and the existing UI still works.
-2. Wire `$effect` snapshot writes into `TripCardWithData` and detail
-   page. Build `WhatsNew` and card badge components. Add Refresh button.
-   Ships green when manual flow (add trip → view → tab away, change
-   mock seed offset, refresh → events appear) works end-to-end.
-3. Server-side snapshot store + cron + push. Deferred.
+When the backend epic starts, lift directly from this doc:
+
+- `src/lib/diff.ts` — the flatten + event types + significance threshold,
+  implemented as a pure module so it runs identically server-side.
+- The `viewedState` store design (client-side, separate from `WatchedTrip`).
+- The UI section: card change-summary line, `WhatsNew` panel, last-refreshed
+  indicator — all unchanged regardless of where snapshots live.
+
+Superseded: the IndexedDB `SnapshotStore` interface, its eviction cadence
+and transaction notes, and the client-side `$effect` snapshot-write flow.
