@@ -14,16 +14,19 @@ this turns the watchlist from a search front-end into a monitoring tool.
 
 ## Slices
 
-Three slices, each shippable as a PR:
+Three slices, each shippable as a PR. **All slices now sit behind the live
+seats.aero adapter** — an API key is available, so the adapter lands first
+and the diff engine gets real availability data from day one instead of
+deterministic mocks (whose diffs are meaningless).
 
 1. **Snapshot store + diff engine** — client-side, no backend, no UI.
 2. **UI integration** — change badges on cards, "What's new" panel,
    per-card Refresh button, "last viewed" tracking.
-3. **Server refresh + notifications** — needs a real backend; deferred
-   until the live seats.aero adapter lands. Out of scope for now.
+3. **Server refresh + notifications** — needs a real backend. Out of
+   scope for now.
 
-Phase 3 intentionally last: shipping cron + persistence before there's
-anything real to refresh against is infrastructure ahead of value.
+Phase 3 intentionally last: cron + server persistence is infrastructure
+that only pays off once 1 and 2 prove the change feed is useful.
 
 ## Data model
 
@@ -156,6 +159,12 @@ queryClient.invalidateQueries({ queryKey: ['search', tripId] });
 ```
 
 Prefix-matches both legs, no further wiring needed.
+
+**Live-data caveat:** the Refresh button and the 60s `staleTime` were sized
+for free mock data. Against the metered seats.aero API, manual refresh needs
+a per-trip cooldown (propose 5 min, disabled-state on the button) and the
+global `staleTime` likely rises. Decide exact numbers in the adapter PR once
+real rate limits are known; Slice 2 must not ship a free-to-spam refresh.
 
 ### Event derivation
 
